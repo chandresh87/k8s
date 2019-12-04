@@ -1,1 +1,1 @@
-Kubernetes in Docker (kind): https://github.com/kubernetes-sigs/kind is used in the continuos integration pipeline as a single node cluster for testing application. Easy start and stop.
+Kubernetes in Docker (kind): https://github.com/kubernetes-sigs/kind is used in the continuos integration pipeline as a single node cluster for testing application. Easy start and stop. ephemeral clusters that start quickly and are in a pristine state for testing applications in Kubernetes each time you check in your code
