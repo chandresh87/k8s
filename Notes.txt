@@ -6,3 +6,12 @@ There are two service discovery mechanisms built into Kubernetes:
 LOGS - kubectl logs -n service-discovery support-tier poller -f
 kubectl rollout -n deployments pause deployment app-tier
 kubectl rollout -n deployments resume deployment app-tier
+Probes are sometimes referred to as health checks.
+Readiness probe - They are used to probe when a pod is ready to serve traffic. As I mentioned before often a pod is not ready after its containers have just started. They may need time to warm caches or load configurations. Readiness probes can monitor the containers until they are ready to serve traffic. But readiness probes are also useful long after startup. For example, if the pod depends on an external service and that service goes down, it’s not worth sending traffic to the pod since it can’t complete it until the external service is back online. Readiness probes control the ready condition of a pod. If a readiness probe succeeds the ready condition is true, otherwise it is false. Services use the ready condition to determine if pods should be sent traffic. In this way probes integrate with services to ensure that traffic doesn’t flow to pods that aren’t ready for it.
+liveness probe - They are used to detect when a pod has entered a broken state and can no longer serve traffic. In this case, Kubernetes will restart the pod for you. That is the key difference between the two types of probes. Readiness probes determine when a service can send traffic to a pod because it is temporarily not ready and liveness probes decide when a pod should be restarted because it won’t come back to life. You declare both probes in the same way, you just have to decide which course of action is appropriate if a probe fails: stop serving traffic or restart.
+All of a pods containers probes must pass for the pod to pass
+You can define any of the following as the action a probe performs to check the container:
+    a command that runs inside the container - A command probe succeeds if the exit code of the command is 0, otherwise it fails.
+    An HTTP GET request - An HTTP GET request probe succeeds if the response status code is between 200 and 399 inclusive.
+    Or opening a TCP socket - A tcp socket probe succeeds if a connection can be established. 
+By default the probes check the pods every 10 seconds.
