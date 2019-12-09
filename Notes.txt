@@ -15,3 +15,4 @@ You can define any of the following as the action a probe performs to check the 
     An HTTP GET request - An HTTP GET request probe succeeds if the response status code is between 200 and 399 inclusive.
     Or opening a TCP socket - A tcp socket probe succeeds if a connection can be established. 
 By default the probes check the pods every 10 seconds.
+Remember that probes kick in after containers are started. If you need to test or prepare things before the containers start, there is a way to do that as well. That is the role of init containers 
