@@ -29,4 +29,4 @@ This pattern is commonly used to communicate with a database.
 The adaptor pattern uses a container to present a standardized interface across multiple pods. For example, presenting an interface for accessing output in a standardized format for logs, across several applications. The adaptor pattern is the opposite of the ambassador pattern, in that the ambassador presents a simplified view to the primary container while the adaptor pattern presents a simplified view of the application to the outside world.The adaptor pattern is commonly used for normalizing application logs, or monitoring data, so they can easily be consumed by a shared aggregation system. The adaptor may communicate with the primary container using either a shared volume when dealing with files or over localhost. 
 Network policy - Ingress and Egress
 service roles
-
+kubectl shortcuts - AUTO Complete, generate yaml file, explain.
