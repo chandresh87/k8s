@@ -52,3 +52,8 @@ Remove the Pod's annotation : kubectl annotate pod red-frontend Lab-
 The annotate command can be used to add/remove/update annotations. You add a dash (-) after the annotation key to remove the annotation. You can do the same with the kubectl label command when you need to remove a label.
 add annotation kubectl annotate pod red-frontend Lab=yes -n labels
 update kubectl annotate pod red-frontend Lab=NO -n labels --overwrite
+kubectl annotate --help
+label values cannot have spaces. 
+generate a Deployment manifest : kubectl create deployment --image=httpd:2.4.38 web-server --dry-run -o yaml
+In Deployment manifest - template is a template for the Pods that will be created. The template provides the desired behavior of each Pod and is essentially the same as an individual Pod manifest. Notice the label that the Deployment selector uses is applied to the Pod (app: web-server). This is required for the Deployment to track its Pods.
+kubectl create deployment --image=httpd:2.4.38 web-server --dry-run -o yaml > deploy.yaml
