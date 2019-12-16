@@ -37,3 +37,18 @@ kubectl get pod first-pod -o yaml | more
 kubectl get pod -o wide
 kubectl create/apply -f first-pod.yaml
 kubectl delete pod first-pod
+https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
+kubectl create namespace labels
+# Set namespace as the default for the current context : kubectl config set-context $(kubectl config current-context) --namespace=labels
+kubectl get option to display columns for both labels: kubectl get pods -L color,tier
+Use the -l (or --selector) option to select all Pods with a color label: kubectl get pods -L color,tier -l color
+Select all Pods that do not have a color label:kubectl get pods -L color,tier -l '!color'
+Select all Pods that have the color red:kubectl get pods -L color,tier -l 'color=red'
+Select all Pods that have the color red and are not in frontend tier: kubectl get pods -L color,tier -l 'color=red,tier!=frontend'
+Select all Pods with green or blue color: kubectl get pods -L color,tier -l 'color in (blue,green)'
+kubectl get pod -n labels -L color,tier -l 'color notin (blue,green)'
+kubectl describe pod red-frontend | grep Annotations
+Remove the Pod's annotation : kubectl annotate pod red-frontend Lab-
+The annotate command can be used to add/remove/update annotations. You add a dash (-) after the annotation key to remove the annotation. You can do the same with the kubectl label command when you need to remove a label.
+add annotation kubectl annotate pod red-frontend Lab=yes -n labels
+update kubectl annotate pod red-frontend Lab=NO -n labels --overwrite
