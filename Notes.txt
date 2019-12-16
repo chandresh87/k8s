@@ -30,3 +30,10 @@ The adaptor pattern uses a container to present a standardized interface across 
 Network policy - Ingress and Egress . Apply policy in a name space on set of pods. We need  a network pluugin to make it work.
 service roles
 kubectl shortcuts - AUTO Complete, generate yaml file, explain. filter get by label and sort by command
+Load kubectl shell completions for your current shell session: source <(kubectl completion bash)
+kubectl explain Pod.spec | more
+kubectl explain pod.spec.containers | more
+kubectl get pod first-pod -o yaml | more
+kubectl get pod -o wide
+kubectl create/apply -f first-pod.yaml
+kubectl delete pod first-pod
