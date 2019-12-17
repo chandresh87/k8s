@@ -65,3 +65,4 @@ kubectl rollout status deployment web-server
 kubectl set image deployment web-server httpd=httpd:2.4.38-alpine --record
 kubectl rollout undo deployment web-server
 Kubectl expose deployment web-server --type=LoadBalancer
+watch kubectl get services
