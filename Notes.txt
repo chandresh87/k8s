@@ -113,3 +113,34 @@ spec:
 EOF
 kubectl create -f cronjob-example.yaml
 Observe the Events of the CronJob to confirm that it is creating Jobs every minute: kubectl describe cronjob cronjob-example
+kubectl explain pod.spec.containers.readinessProbe
+Read through the DESCRIPTION and FIELDS. There are three types of actions a probe can take to assess the readiness of a Pod's container:
+
+exec: Issue a command in the container. If the exit code is zero the container is a success, otherwise it is a failed probe.
+httpGet: Send and HTTP GET request to the container at a specified path and port. If the HTTP response status code is a 2xx or 3xx then the container is a success, otherwise it is a failure.
+tcpSocket: Attempt to open a socket to the container on a specified port. If the connection cannot be established, the probe fails.
+The number of consecurtive successes is configured via the successThreshold field, and the number of consecutive failures required to tranisition from success to failure is failureThreshold. The probe runs every periodSeconds and each probe will wait up to timeoutSeconds to complete.
+cat << 'EOF' > pod-readiness.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: readiness
+  name: readiness-http
+spec:
+  containers:
+  - name: readiness
+    image: httpd:2.4.38-alpine
+    ports:
+    - containerPort: 80
+    # Sleep for 30 seconds before starting the server
+    command: ["/bin/sh","-c"]
+    args: ["sleep 30 && httpd-foreground"]
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 3
+      periodSeconds: 3
+EOF
+kubectl describe pod readiness-http : In the Events you should see some Warning entries related to the failed probe.You can see when the succeeds by looking at the Conditions section:The Ready and ContainerReady Status will both be True once the probe succeeds. They will be False until then. 
