@@ -302,3 +302,50 @@ kubectl create -f /tmp/metrics-server-master/deploy/1.8+/
 kubectl top node
 Display the resource utilization of individual containers: kubectl top pod -n logs --containers
 Use a label selector to show only resource utilizaiton for Pods with a test label: kubectl top pod -n logs --containers -l test
+Create a Pod manifest for a Pod that will consume a lot of CPU resources:
+cat << 'EOF' > load.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load
+spec:
+  containers:
+  - name: cpu-load
+    image: vish/stress
+    args:
+    - -cpus
+    - "2"
+EOF
+ Create a similar Pod specification except with CPU and memory resource limits and requests:
+ cat << 'EOF' > load-limited.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load-limited
+spec:
+  containers:
+  - name: cpu-load-limited
+    image: vish/stress
+    args:
+    - -cpus
+    - "2"
+    resources:
+      limits:
+        cpu: "0.5" # half a core
+        memory: "20Mi" # 20 mebibytes 
+      requests:
+        cpu: "0.25" # quarter of a core
+        memory: "10Mi" # 20 mebibytes
+EOF
+The resources key is added to specify the limits and requests. The Pod will only be scheduled on a Node with 0.25 CPU cores and 10MiB of memory available. It's important to note that the scheduler doesn't consider the actual resource utilization of the node. Rather, it bases its decision upon the sum of container resource requests on the node. For example, if a container requests all the CPU of a node but is actually 0% CPU, the scheduler would treat the node as not having any CPU available. 
+Notice the load-limited Pod is using almost half of a CPU core (499milli cores), which is the limit. The request is used for making scheduling decisions but the limit impacts the actual utilization. The Pod was scheduled on the node that isn't running load since load had no CPU available to meet the request. Using requests and limits for CPU and memory can prevent performance issues, and allow the scheduler to make the best use of the cluster's resources.
+limits       <map[string]string>
+     Limits describes the maximum amount of compute resources allowed. More
+     info:
+     https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+
+   requests     <map[string]string>
+     Requests describes the minimum amount of compute resources required. If
+     Requests is omitted for a container, it defaults to Limits if that is
+     explicitly specified, otherwise to an implementation-defined value. More
+     info:
