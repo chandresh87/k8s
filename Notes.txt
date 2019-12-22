@@ -349,3 +349,133 @@ limits       <map[string]string>
      Requests is omitted for a container, it defaults to Limits if that is
      explicitly specified, otherwise to an implementation-defined value. More
      info:
+The following rules apply when limits or requests are exceeded by Pod containers:
+
+Containers that exceed their memory limits will be terminated and restarted if possible.
+Containers that exceed their memory request may be evicted when the node runs out of memory.
+Containers that exceed their CPU limits may be allowed to exceed the limit depending on the other Pods on the node. Containers will not be terminated for exceeding CPU limits.
+When a security context field is configured for a Pod and one of the Pod's containers, the container's setting takes precedence. Configuring the security context of Pods and containers can greatly reduce the security risk posed by using third-party images.
+Explain the available Pod-level security context fields: kubectl explain pod.spec.securityContext
+kubectl explain pod.spec.containers.securityContext
+Pod that has a privileged container:
+cat > pod-privileged.yaml <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-test-2
+spec:
+  containers:
+  - image: busybox:1.30.1
+    name: busybox
+    args:
+    - sleep
+    - "3600"
+    securityContext:
+      privileged: true
+EOF
+ List the devices available in the container : kubectl exec security-context-test-2 -it -- ls /dev
+  Create another pod that includes a Pod security context as well as a container security context:
+  cat << EOF > pod-runas.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-test-3
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+  containers:
+  - image: busybox:1.30.1
+    name: busybox
+    args:
+    - sleep
+    - "3600"
+    securityContext:
+      runAsUser: 2000
+      readOnlyRootFilesystem: true
+EOF
+The Pod security context enforces that container processes do not run as root (runAsNonRoot) and sets the user ID of the container process to 1000. The container securityContext sets the container process' user ID to 2000 and sets the root file system to read-only.
+Open a shell in the container: kubectl exec security-context-test-3 -it -- /bin/sh  
+Notice that the shell prompt is $ and not # indicating that you are not the root user.
+Attempt to create a file in the /tmp directory:touch /tmp/test-file
+The attempt fails due to the Read-only file system. When possible, it is best to use read-only root file systems to harden your container environments. A best practice is to use volumes to mount any files that require modification, allowing the root file system to be read-only.
+Persistent Volumes (PVs) are Kubernetes resources that represent storage in the cluster. Unlike regular Pod volumes (volumes of the default emptyDir type) which exist only during the lifetime of the Pod containing volume, PVs do not have a lifetime connected to a Pod. Thus, they can be used by multiple Pods over time, or even at the same time. Different types of storage can be used by PVs including NFS, iSCSI, and cloud provided storage volumes, such as AWS Elastic Block Store (EBS) volumes. The list of supported PVs is here. Pods claim PV resources through Persistent Volume Claims (PVCs). A Pod can claim a specific amount of PV storage and an access mode, such as read/write by only one node, through a PVC. The PV will be automatically created as long as the cluster supports dynamic provisioning. This allows you to consider PVCs as storage.
+Create a PVC:
+cat << 'EOF' > pvc.yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: db-data
+spec:
+  # Only one node can mount the volume in Read/Write
+  # mode at a time
+  accessModes:
+  - ReadWriteOnce 
+  resources:
+    requests:
+      storage: 2Gi
+EOF
+You will use the PVC to store data in a database, a common example of persistent data that should survive in case a Pod were to be terminated.
+kubectl get pv : There is a RECLAIM POLICY associated with the PV. The Delete policy means the PV is deleted once the PVC is deleted. It is also possible to keep the PV using other reclaim policies.
+Create a Pod that mounts the volume provided by the PVC:
+cat << 'EOF' > db.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db 
+spec:
+  containers:
+  - image: mongo:4.0.6
+    name: mongodb
+    # Mount as volume 
+    volumeMounts:
+    - name: data
+      mountPath: /data/db
+    ports:
+    - containerPort: 27017
+      protocol: TCP
+  volumes:
+  - name: data
+    # Declare the PVC to use for the volume
+    persistentVolumeClaim:
+      claimName: db-data
+EOF
+The Pod uses the MongoDB image, which is a NoSQL database that stores it's database files at /data/db by default. The PVC is mounted as a volume at that path causing the database files to be written to the EBS Persistent volume.
+Run the MongoDB CLI client to insert a document that contains the message "I was here" into a test database and then confirm it was inserted: kubectl exec db -it -- mongo testdb --quiet --eval \
+  'db.messages.insert({"message": "I was here"}); db.messages.findOne().message'
+  ConfigMaps can be mounted into containers as volumes or as environment variables
+  With kubectl, ConfigMaps can be created from:
+
+Environment variable files consisting of key-value pairs separated by equal signs, e.g. key=value. The file should have one key-value pair per line.
+Regular files or directories of files which results in keys that are the names of the files and values that are the contents of the files.
+Literals consisting of individual key-value pairs that you specify on the command line.
+Writing a YAML manifest file of kind: ConfigMap.
+Create a Pod that mounts the ConfigMap using a volume:
+cat << 'EOF' > pod-configmap.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db 
+spec:
+  containers:
+  - image: mongo:4.0.6
+    name: mongodb
+    # Mount as volume 
+    volumeMounts:
+    - name: config
+      mountPath: /config
+    ports:
+    - containerPort: 27017
+      protocol: TCP
+  volumes:
+  - name: config
+    # Declare the configMap to use for the volume
+    configMap:
+      name: app-config
+EOF
+List the /config directory, where the ConfigMap volume is mounted, in the container: kubectl exec db -it -- ls /config --> The two ConfigMap keys are listed as files.
+Get the contents of the DB_NAME file : kubectl exec db -it -- cat /config/DB_NAME && echo
+kubectl create configmap --help
+To use a ConfigMap via Pod environment variables, you set the following field pod.spec.containers.envFrom.configMapRef
+Secrets are very similar to ConfigMaps with the main difference being their intent, i.e. Secrets store sensitive information and ConfigMaps should store configuraiton data. Secrets are not encrypted at rest by default and are instead only base-64 encoded. However, Kubernetes can separately control access to ConfigMaps and Secrets. So by following the pattern of storing sensitive data in Secrets, users of the cluster can be denied access to Secrets but granted access to ConfigMaps using Kubernetes access control mechanisms.
