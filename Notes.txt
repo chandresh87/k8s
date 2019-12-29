@@ -828,4 +828,7 @@ EOF
 https://medium.com/bb-tutorials-and-thoughts/practice-enough-with-these-questions-for-the-ckad-exam-2f42d1228552
 https://kubernetes.io/docs/reference/kubectl/cheatsheet/
 https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/
+https://kubernetes.io/docs/concepts/
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#-strong-getting-started-strong-
+https://devblogs.microsoft.com/premier-developer/certified-kubernetes-application-developer-ckad-exam-tips/
 kubectl explain <object_name>.spec – will show you what fields you can use when defining Kubernetes objects using YAML. It’s very convenient to know if a readiness probe should be declared at the pod level or at the container level. You can also add –recursive to display all lower levels fields rather than just the direct children. I tried to avoid the recursive option since it is really verbose.
