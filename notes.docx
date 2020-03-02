@@ -1,0 +1,858 @@
+•	Kubernetes in Docker (kind): https://github.com/kubernetes-sigs/kind is used in the continuos integration pipeline as a single node cluster for testing application. Easy start and stop. ephemeral clusters that start quickly and are in a pristine state for testing applications in Kubernetes each time you check in your code
+
+•	There are two service discovery mechanisms built into Kubernetes:
+o	Environment variables - The environment variables follow a naming convention so that all you need to know is the name of the service to     access it. Kubernetes will automatically inject environment variables in containers that provide the address to access services.
+When using environment variables for service discovery the service must be created before the pod in order to use environment variables     for service discovery. The service must also be in the same namespace.
+•	DNS - Kubernetes also constructs DNS records based on the service name and containers are automatically configured to query the cluster’s   DNS to discover services. DNS records overcome the shortcomings of environment variables. DNS records are added and removed from the cluster’s DNS as services are created and deleted. The DNS name for services include the namespace allowing communication with services in other namespaces. SRV DNS records are created for service port information 
+
+•	LOGS - kubectl logs -n service-discovery support-tier poller -f
+•	kubectl rollout -n deployments pause deployment app-tier
+•	kubectl rollout -n deployments resume deployment app-tier
+•	
+Probes are sometimes referred to as health checks.
+•	Readiness probe - They are used to probe when a pod is ready to serve traffic. As I mentioned before often a pod is not ready after its containers have just started. They may need time to warm caches or load configurations. Readiness probes can monitor the containers until they are ready to serve traffic. But readiness probes are also useful long after startup. For example, if the pod depends on an external service and that service goes down, it’s not worth sending traffic to the pod since it can’t complete it until the external service is back online. Readiness probes control the ready condition of a pod. If a readiness probe succeeds the ready condition is true, otherwise it is false. Services use the ready condition to determine if pods should be sent traffic. In this way probes integrate with services to ensure that traffic doesn’t flow to pods that aren’t ready for it.
+•	liveness probe - They are used to detect when a pod has entered a broken state and can no longer serve traffic. In this case, Kubernetes will restart the pod for you. That is the key difference between the two types of probes. Readiness probes determine when a service can send traffic to a pod because it is temporarily not ready and liveness probes decide when a pod should be restarted because it won’t come back to life. You declare both probes in the same way, you just have to decide which course of action is appropriate if a probe fails: stop serving traffic or restart.
+All of a pods containers probes must pass for the pod to pass
+You can define any of the following as the action a probe performs to check the container:
+•	A command that runs inside the container - A command probe succeeds if the exit code of the command is 0, otherwise it fails.
+•	An HTTP GET request - An HTTP GET request probe succeeds if the response status code is between 200 and 399 inclusive.
+•	Or opening a TCP socket - A tcp socket probe succeeds if a connection can be established. 
+By default the probes check the pods every 10 seconds.
+Remember that probes kick in after containers are started. If you need to test or prepare things before the containers start, there is a way to do that as well. That is the role of init containers 
+Sometimes you need to perform some tasks or check some prerequisites before a main application container starts. 
+Some examples include waiting for a service to be created, downloading files the application depends on, or dynamically deciding which port the application should use.
+Pods may declare any number of init containers. 
+1.	They run in a sequence in the order they are declared. 
+2.	Each init container must run to completion before the following init container begins. 
+3.	Once all of the init containers have completed the main containers in the pod can start. 
+4.	Init containers use different images from the containers in a pod. 
+5.	This provides some benefits. They can contain utilities that are not desirable to include in the actual application image for security reasons. 
+6.	They can also contain utilities or custom code for setup that is not present in the application image.
+7.	For example there is no need to include utilities like Sed Awk or dig in an application image if they are only used for setup. 
+8.	Init containers also provide an easy way to block or delay the startup of an application until some preconditions are met. 
+9.	They are similar to readiness probes in this sense but only run at pod startup and can perform other useful work.
+10.	There is one important thing to understand about init containers. They run every time a pod is created. 
+11.	This means they will run once for every replica in a deployment. If a pod restarts, say due to a failed liveness probe, the init containers would run again as part of the restart. 
+12.	Thus you have to assume that init containers run at least once. This usually means init containers should be idempotent; meaning running it more than once has no additional effect.
+13.	The one exception is initContainers do not support readiness probes because they must run to completion before the state of the pod can be considered ready. 
+
+Kubernetes pods allow you to have multiple containers sharing the same network space and can also share storage between containers.
+•	Three multi-container patterns, the sidecar, the ambassador, and the adapter.
+o	Pods allow you to specify additional information such as restart policies and probes to check the health of containers
+o	Pods also allow you to seamlessly deal with different types of underlying containers, for example, Docker and Rocket. 
+o	The sidecar pattern uses a helper container to assist a primary container. Common examples include logging agents that collect logs and ship them to a central aggregation system. 
+o	The ambassador pattern uses a container to proxy communication to and from a primary container. The primary container only needs to consider connecting to localhost, while the ambassador controls proxying the connections to different environments. This is because containers in the same pod share the same network space, and can communicate with each other over localhost. This pattern is commonly used to communicate with a database.
+o	The adaptor pattern uses a container to present a standardized interface across multiple pods. For example, presenting an interface for accessing output in a standardized format for logs, across several applications. 
+o	The adaptor pattern is the opposite of the ambassador pattern, in that the ambassador presents a simplified view to the primary container while the adaptor pattern presents a simplified view of the application to the outside world.
+o	The adaptor pattern is commonly used for normalizing application logs, or monitoring data, so they can easily be consumed by a shared aggregation system. The adaptor may communicate with the primary container using either a shared volume when dealing with files or over localhost. 
+
+•	Network policy - Ingress and Egress. Apply policy in a name space on set of pods. We need a network plugin to make it work.
+Service roles
+kubectl shortcuts – 
+1.	AUTO Complete, 
+2.	generate yaml file,
+3.	 explain. 
+4.	filter get by label and sort by command
+5.	Load kubectl shell completions for your current shell session: source <(kubectl completion bash)
+6.	kubectl explain Pod.spec | more
+7.	kubectl explain pod.spec.containers | more
+8.	kubectl get pod first-pod -o yaml | more
+9.	kubectl get pod -o wide
+10.	kubectl create/apply -f first-pod.yaml
+11.	kubectl delete pod first-pod
+12.	https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase
+13.	kubectl create namespace labels
+14.	Set namespace as the default for the current context : kubectl config set-context $(kubectl config current-context) --namespace=labels
+15.	kubectl get option to display columns for both labels: kubectl get pods -L color,tier
+16.	Use the -l (or --selector) option to select all Pods with a color label: kubectl get pods -L color,tier -l color
+17.	Select all Pods that do not have a color label: kubectl get pods -L color,tier -l '!color'
+18.	Select all Pods that have the color red: kubectl get pods -L color,tier -l 'color=red'
+19.	Select all Pods that have the color red and are not in frontend tier: kubectl get pods -L color,tier -l 'color=red,tier!=frontend'
+20.	Select all Pods with green or blue color: kubectl get pods -L color,tier -l 'color in (blue,green)'
+21.	kubectl get pod -n labels -L color,tier -l 'color notin (blue,green)'
+22.	kubectl describe pod red-frontend | grep Annotations
+23.	Remove the Pod's annotation : kubectl annotate pod red-frontend Lab-
+24.	The annotate command can be used to add/remove/update annotations. You add a dash (-) after the annotation key to remove the annotation. You can do the same with the kubectl label command when you need to remove a label.
+25.	add annotation kubectl annotate pod red-frontend Lab=yes -n labels
+26.	update kubectl annotate pod red-frontend Lab=NO -n labels --overwrite
+27.	kubectl annotate --help
+28.	label values cannot have spaces. 
+29.	generate a Deployment manifest : kubectl create deployment --image=httpd:2.4.38 web-server --dry-run -o yaml
+30.	In Deployment manifest - template is a template for the Pods that will be created. The template provides the desired behavior of each Pod and is essentially the same as an individual Pod manifest. Notice the label that the Deployment selector uses is applied to the Pod (app: web-server). This is required for the Deployment to track its Pods.
+31.	kubectl create deployment --image=httpd:2.4.38 web-server --dry-run -o yaml > deploy.yaml
+32.	The StrategyType is RollingUpdate, which means when you specify a new desired state for the Deployment's Pods, the update will be incrementally rolled out to all of the Pods.
+33.	kubectl scale deployment web-server --replicas=6
+34.	kubectl rollout history deployment web-server
+35.	kubectl edit deployment web-server --record
+36.	kubectl rollout status deployment web-server
+37.	kubectl set image deployment web-server httpd=httpd:2.4.38-alpine --record
+38.	kubectl rollout undo deployment web-server
+39.	Kubectl expose deployment web-server --type=LoadBalancer
+40.	watch kubectl get services
+41.	Create a Job named one-off that sleeps for 30 seconds: kubectl create job one-off --image=alpine -- sleep 30
+42.	kubectl get jobs one-off -o yaml | more
+
+•	backoffLimit: Number of times a Job will retry before marking a Job as failed
+•	completions: Number of Pod completions the Job needs before being considered a success
+•	parallelism: Number of Pods the Job is allowed to run in parallel
+•	spec.template.spec.restartPolicy: Job Pods default to never attempting to restart. Instead the Job is responsible for managing the restart of failed Pods.
+•	Also note the Job uses a selector to track its Pods.
+•	kubectl explain job.spec | more
+cat << 'EOF' > pod-fail.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+name: pod-fail
+spec:
+backoffLimit: 3
+completions: 6
+parallelism: 2
+template:
+spec:
+containers:
+- image: alpine
+name: fail
+command: ['sleep 20 && exit 1']
+restartPolicy: Never
+EOF
+•	kubectl create -f pod-fail.yaml
+•	watch kubectl describe jobs pod-fail
+Setting a Job's ttlSecondsAfterFinished can free you from manually cleaning up the Pods.
+cat << 'EOF' > cronjob-example.yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: cronjob-example
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - image: alpine
+            name: fail
+            command: ['date']
+          restartPolicy: Never
+EOF
+kubectl create -f cronjob-example.yaml
+Observe the Events of the CronJob to confirm that it is creating Jobs every minute: kubectl describe cronjob cronjob-example
+kubectl explain pod.spec.containers.readinessProbe
+Read through the DESCRIPTION and FIELDS. There are three types of actions a probe can take to assess the readiness of a Pod's container:
+
+exec: Issue a command in the container. If the exit code is zero the container is a success, otherwise it is a failed probe.
+httpGet: Send and HTTP GET request to the container at a specified path and port. If the HTTP response status code is a 2xx or 3xx then the container is a success, otherwise it is a failure.
+tcpSocket: Attempt to open a socket to the container on a specified port. If the connection cannot be established, the probe fails.
+The number of consecurtive successes is configured via the successThreshold field, and the number of consecutive failures required to tranisition from success to failure is failureThreshold. The probe runs every periodSeconds and each probe will wait up to timeoutSeconds to complete.
+cat << 'EOF' > pod-readiness.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: readiness
+  name: readiness-http
+spec:
+  containers:
+  - name: readiness
+    image: httpd:2.4.38-alpine
+    ports:
+    - containerPort: 80
+    # Sleep for 30 seconds before starting the server
+    command: ["/bin/sh","-c"]
+    args: ["sleep 30 && httpd-foreground"]
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 3
+      periodSeconds: 3
+EOF
+kubectl describe pod readiness-http : In the Events you should see some Warning entries related to the failed probe.You can see when the succeeds by looking at the Conditions section:The Ready and ContainerReady Status will both be True once the probe succeeds. They will be False until then. 
+cat << 'EOF' > pod-liveness.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: liveness-tcp
+spec:
+  containers:
+  - name: liveness
+    image: busybox:1.30.1
+    ports:
+    - containerPort: 8888
+    # Listen on port 8888 for 30 seconds, then sleep
+    command: ["/bin/sh", "-c"]
+    args: ["timeout 30 nc -p 8888 -lke echo hi && sleep 600"]
+    livenessProbe:
+      tcpSocket:
+        port: 8888
+      initialDelaySeconds: 3
+      periodSeconds: 5
+EOF
+Create a multi-container Pod that runs a server and a client that sends requests to the server:
+cat << 'EOF' > pod-logs.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: logs
+  name: pod-logs
+spec:
+  containers:
+  - name: server
+    image: busybox:1.30.1
+    ports:
+    - containerPort: 8888
+    # Listen on port 8888
+    command: ["/bin/sh", "-c"]
+    # -v for verbose mode
+    args: ["nc -p 8888 -v -lke echo Received request"]
+    readinessProbe:
+      tcpSocket:
+        port: 8888
+  - name: client
+    image: busybox:1.30.1
+    # Send requests to server every 5 seconds
+    command: ["/bin/sh", "-c"]
+    args: ["while true; do sleep 5; nc localhost 8888; done"]
+EOF
+Retrieve the logs (standard output messages) from the server container: kubectl logs pod-logs server
+Display the most recent log (--tail=1) including the timestamp and stream (-f for follow) the logs : kubectl logs -f --tail=1 --timestamps pod-logs client
+Retrieve the last 10 lines from the conf/httpd.conf file: kubectl exec webserver-logs -- tail -10 conf/httpd.conf
+Copy the conf/httpd.conf from the container to the bastion host: kubectl cp webserver-logs:conf/httpd.conf local-copy-of-httpd.conf
+The cp command takes a source file spec (webserver-logs:conf/httpd.conf) and a destination file spec (local-copy-of-httpd.conf). You can also copy from the local file system to a container using cp
+Create a ConfigMap that stores the fluentd configuration file:
+cat << EOF > fluentd-sidecar-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+data:
+  fluent.conf: |
+    # First log source (tailing a file at /var/log/1.log)
+    <source>
+      @type tail
+      format none
+      path /var/log/1.log
+      pos_file /var/log/1.log.pos
+      tag count.format1
+    </source>
+
+    # Second log source (tailing a file at /var/log/2.log)
+    <source>
+      @type tail
+      format none
+      path /var/log/2.log
+      pos_file /var/log/2.log.pos
+      tag count.format2
+    </source>
+
+    # S3 output configuration (Store files every minute in the bucket's logs/ folder)
+    <match **>
+      @type s3
+
+      s3_bucket $s3_bucket
+      s3_region us-west-2
+      path logs/
+      buffer_path /var/log/
+      store_as text
+      time_slice_format %Y%m%d%H%M
+      time_slice_wait 1m
+      
+      <instance_profile_credentials>
+      </instance_profile_credentials>
+    </match>
+EOF
+Create a multi-container Pod using a fluentd logging agent sidecar:
+at << 'EOF' > pod-counter.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: counter
+spec:
+  containers:
+  - name: count
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - >
+      i=0;
+      while true;
+      do
+        # Write two log files along with the date and a counter
+        # every second
+        echo "$i: $(date)" >> /var/log/1.log;
+        echo "$(date) INFO $i" >> /var/log/2.log;
+        i=$((i+1));
+        sleep 1;
+      done
+    # Mount the log directory /var/log using a volume
+    volumeMounts:
+    - name: varlog
+      mountPath: /var/log
+  - name: count-agent
+    image: lrakai/fluentd-s3:latest
+    env:
+    - name: FLUENTD_ARGS
+      value: -c /fluentd/etc/fluent.conf
+    # Mount the log directory /var/log using a volume
+    # and the config file
+    volumeMounts:
+    - name: varlog
+      mountPath: /var/log
+    - name: config-volume
+      mountPath: /fluentd/etc
+  # Use host network to allow sidecar access to IAM instance profile credentials
+  hostNetwork: true
+  # Declare volumes for log directory and ConfigMap
+  volumes:
+  - name: varlog
+    emptyDir: {}
+  - name: config-volume
+    configMap:
+      name: fluentd-config
+EOF
+kubectl create -f pod-counter.yaml
+The count container writes the date and a counter variable ($i) in two different log formats to two different log files in the /var/log directory every second. The /var/log directory is mounted as a Volume in both the primary count container and the count-agent sidecar so both containers can access the logs. The sidecar also mounts the ConfigMap to access the fluentd configuration file. By using a ConfigMap, the same sidecar container can be used for any configuration compared to storing the configuration in the image and having to manage separate container images for each configuration.
+kubectl get pods --all-namespaces
+List all the events in the logs namespace- kubectl get events -n logs
+kubectl top
+Download the Metrics Server manifest files and create the associated Resources:
+wget -O /tmp/metrics-server.zip https://github.com/cloudacademy/metrics-server/archive/master.zip
+sudo apt install unzip
+unzip -q -d /tmp /tmp/metrics-server.zip
+kubectl create -f /tmp/metrics-server-master/deploy/1.8+/
+kubectl top node
+Display the resource utilization of individual containers: kubectl top pod -n logs --containers
+Use a label selector to show only resource utilizaiton for Pods with a test label: kubectl top pod -n logs --containers -l test
+Create a Pod manifest for a Pod that will consume a lot of CPU resources:
+cat << 'EOF' > load.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load
+spec:
+  containers:
+  - name: cpu-load
+    image: vish/stress
+    args:
+    - -cpus
+    - "2"
+EOF
+ Create a similar Pod specification except with CPU and memory resource limits and requests:
+ cat << 'EOF' > load-limited.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load-limited
+spec:
+  containers:
+  - name: cpu-load-limited
+    image: vish/stress
+    args:
+    - -cpus
+    - "2"
+    resources:
+      limits:
+        cpu: "0.5" # half a core
+        memory: "20Mi" # 20 mebibytes 
+      requests:
+        cpu: "0.25" # quarter of a core
+        memory: "10Mi" # 20 mebibytes
+EOF
+The resources key is added to specify the limits and requests. The Pod will only be scheduled on a Node with 0.25 CPU cores and 10MiB of memory available. It's important to note that the scheduler doesn't consider the actual resource utilization of the node. Rather, it bases its decision upon the sum of container resource requests on the node. For example, if a container requests all the CPU of a node but is actually 0% CPU, the scheduler would treat the node as not having any CPU available. 
+Notice the load-limited Pod is using almost half of a CPU core (499milli cores), which is the limit. The request is used for making scheduling decisions but the limit impacts the actual utilization. The Pod was scheduled on the node that isn't running load since load had no CPU available to meet the request. Using requests and limits for CPU and memory can prevent performance issues, and allow the scheduler to make the best use of the cluster's resources.
+limits       <map[string]string>
+     Limits describes the maximum amount of compute resources allowed. More
+     info:
+     https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+
+   requests     <map[string]string>
+     Requests describes the minimum amount of compute resources required. If
+     Requests is omitted for a container, it defaults to Limits if that is
+     explicitly specified, otherwise to an implementation-defined value. More
+     info:
+The following rules apply when limits or requests are exceeded by Pod containers:
+
+Containers that exceed their memory limits will be terminated and restarted if possible.
+Containers that exceed their memory request may be evicted when the node runs out of memory.
+Containers that exceed their CPU limits may be allowed to exceed the limit depending on the other Pods on the node. Containers will not be terminated for exceeding CPU limits.
+When a security context field is configured for a Pod and one of the Pod's containers, the container's setting takes precedence. Configuring the security context of Pods and containers can greatly reduce the security risk posed by using third-party images.
+Explain the available Pod-level security context fields: kubectl explain pod.spec.securityContext
+kubectl explain pod.spec.containers.securityContext
+Pod that has a privileged container:
+cat > pod-privileged.yaml <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-test-2
+spec:
+  containers:
+  - image: busybox:1.30.1
+    name: busybox
+    args:
+    - sleep
+    - "3600"
+    securityContext:
+      privileged: true
+EOF
+ List the devices available in the container : kubectl exec security-context-test-2 -it -- ls /dev
+  Create another pod that includes a Pod security context as well as a container security context:
+  cat << EOF > pod-runas.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-test-3
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+  containers:
+  - image: busybox:1.30.1
+    name: busybox
+    args:
+    - sleep
+    - "3600"
+    securityContext:
+      runAsUser: 2000
+      readOnlyRootFilesystem: true
+EOF
+The Pod security context enforces that container processes do not run as root (runAsNonRoot) and sets the user ID of the container process to 1000. The container securityContext sets the container process' user ID to 2000 and sets the root file system to read-only.
+Open a shell in the container: kubectl exec security-context-test-3 -it -- /bin/sh  
+Notice that the shell prompt is $ and not # indicating that you are not the root user.
+Attempt to create a file in the /tmp directory:touch /tmp/test-file
+The attempt fails due to the Read-only file system. When possible, it is best to use read-only root file systems to harden your container environments. A best practice is to use volumes to mount any files that require modification, allowing the root file system to be read-only.
+Persistent Volumes (PVs) are Kubernetes resources that represent storage in the cluster. Unlike regular Pod volumes (volumes of the default emptyDir type) which exist only during the lifetime of the Pod containing volume, PVs do not have a lifetime connected to a Pod. Thus, they can be used by multiple Pods over time, or even at the same time. Different types of storage can be used by PVs including NFS, iSCSI, and cloud provided storage volumes, such as AWS Elastic Block Store (EBS) volumes. The list of supported PVs is here. Pods claim PV resources through Persistent Volume Claims (PVCs). A Pod can claim a specific amount of PV storage and an access mode, such as read/write by only one node, through a PVC. The PV will be automatically created as long as the cluster supports dynamic provisioning. This allows you to consider PVCs as storage.
+Create a PVC:
+cat << 'EOF' > pvc.yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: db-data
+spec:
+  # Only one node can mount the volume in Read/Write
+  # mode at a time
+  accessModes:
+  - ReadWriteOnce 
+  resources:
+    requests:
+      storage: 2Gi
+EOF
+You will use the PVC to store data in a database, a common example of persistent data that should survive in case a Pod were to be terminated.
+kubectl get pv : There is a RECLAIM POLICY associated with the PV. The Delete policy means the PV is deleted once the PVC is deleted. It is also possible to keep the PV using other reclaim policies.
+Create a Pod that mounts the volume provided by the PVC:
+cat << 'EOF' > db.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db 
+spec:
+  containers:
+  - image: mongo:4.0.6
+    name: mongodb
+    # Mount as volume 
+    volumeMounts:
+    - name: data
+      mountPath: /data/db
+    ports:
+    - containerPort: 27017
+      protocol: TCP
+  volumes:
+  - name: data
+    # Declare the PVC to use for the volume
+    persistentVolumeClaim:
+      claimName: db-data
+EOF
+The Pod uses the MongoDB image, which is a NoSQL database that stores it's database files at /data/db by default. The PVC is mounted as a volume at that path causing the database files to be written to the EBS Persistent volume.
+Run the MongoDB CLI client to insert a document that contains the message "I was here" into a test database and then confirm it was inserted: kubectl exec db -it -- mongo testdb --quiet --eval \
+  'db.messages.insert({"message": "I was here"}); db.messages.findOne().message'
+  ConfigMaps can be mounted into containers as volumes or as environment variables
+  With kubectl, ConfigMaps can be created from:
+
+Environment variable files consisting of key-value pairs separated by equal signs, e.g. key=value. The file should have one key-value pair per line.
+Regular files or directories of files which results in keys that are the names of the files and values that are the contents of the files.
+Literals consisting of individual key-value pairs that you specify on the command line.
+Writing a YAML manifest file of kind: ConfigMap.
+Create a Pod that mounts the ConfigMap using a volume:
+cat << 'EOF' > pod-configmap.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: db 
+spec:
+  containers:
+  - image: mongo:4.0.6
+    name: mongodb
+    # Mount as volume 
+    volumeMounts:
+    - name: config
+      mountPath: /config
+    ports:
+    - containerPort: 27017
+      protocol: TCP
+  volumes:
+  - name: config
+    # Declare the configMap to use for the volume
+    configMap:
+      name: app-config
+EOF
+List the /config directory, where the ConfigMap volume is mounted, in the container: kubectl exec db -it -- ls /config --> The two ConfigMap keys are listed as files.
+Get the contents of the DB_NAME file : kubectl exec db -it -- cat /config/DB_NAME && echo
+kubectl create configmap --help
+To use a ConfigMap via Pod environment variables, you set the following field pod.spec.containers.envFrom.configMapRef
+Secrets are very similar to ConfigMaps with the main difference being their intent, i.e. Secrets store sensitive information and ConfigMaps should store configuraiton data. Secrets are not encrypted at rest by default and are instead only base-64 encoded. However, Kubernetes can separately control access to ConfigMaps and Secrets. So by following the pattern of storing sensitive data in Secrets, users of the cluster can be denied access to Secrets but granted access to ConfigMaps using Kubernetes access control mechanisms.
+Use kubectl to create a Secret named app-secret:kubectl create secret generic app-secret --from-literal=password=123457
+Confirm the secret value is base-64 encoded by decoding it:kubectl get secret app-secret -o jsonpath="{.data.password}" \
+  | base64 --decode \
+  && echo
+  Create a Pod that uses the Secret through an environment variable:
+  cat << EOF > pod-secret.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-secret
+spec:
+  containers:
+  - image: busybox:1.30.1
+    name: busybox
+    args:
+    - sleep
+    - "3600"
+    env:
+    - name: PASSWORD      # Name of environment variable
+      valueFrom:
+        secretKeyRef:
+          name: app-secret  # Name of secret
+          key: password     # Name of secret key
+EOF
+Print the value of the environment variable in the Pod's container: kubectl exec pod-secret -- /bin/sh -c 'echo $PASSWORD'
+Kubernetes uses ServiceAccounts as a mechanism for providing Pods with an identity in the cluster. Pod's can authenticate using ServiceAccounts and gain access to APIs that the ServiceAccount has been granted. Your cluster administrator can create specific roles that grant access to APIs and bind the roles to ServiceAccounts. This is referred to as role-based access control (RBAC). Pods can then declare a ServiceAccount in their specification to gain the access associated with the ServiceAccount's role. As an example, you could use a ServiceAccount to grant a Pod access to the GET Pod API to allow the Pod to get the details of other Pods
+kubectl get serviceaccounts - Each Namespace has a default ServiceAccount. The default ServiceAccount grants minimal access to APIs and cannot be used to get any cluster state information. Therefore, you should use custom ServiceAccounts when your application requires access to cluster state.
+Create a Pod and get its YAML manifest:kubectl run default-pod --generator=run-pod/v1 --image=mongo:4.0.6 
+kubectl get pod default-pod -o yaml | more
+spec.serviceAccount is automatically set to the default ServiceAccount
+Create a new ServiceAccount:kubectl create serviceaccount app-sa
+It is a best practice to create a ServiceAccount for each of your applications to use the least amount of access necessary (principle of least privilege) to improve security. The created ServiceAccount will not have any specific role bound to it so there are no additional permissions associated with it. In practice your Kubernetes administrator would create a role and bind it to the ServiceAccount. 
+cat << 'EOF' > pod-custom-sa.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: custom-sa-pod 
+spec:
+  containers:
+  - image: mongo:4.0.6
+    name: mongodb
+  serviceAccount: app-sa
+EOF
+kubectl run default-pod --generator=run-pod/v1 --image=mongo:4.0.6 --serviceaccount=app-sa --dry-run -o yaml
+Every ServiceAccount has a corresponding token secret (see them with kubectl get secrets) that can be used to authenticate requests from inside the container. The ServiceAccount's token secret is automatically mounted as a volume. That is what you see in the volumeMounts configuration.
+describe the master node: kubectl describe nodes -l node-role.kubernetes.io/master | more
+The describe command uses the node-role.kubernetes.io/master label to select only nodes that have that label present, of which there is only one.
+ In the output, you will see a Taints section with a value of node-role.kubernetes.io/master:NoSchedule. Taints cause the node to repel pods unless the pod declares a toleration of the taint. For the NoSchedule case, this means no pods will be assigned to the master unless you declare a toleration of node-role.kubernetes.io/master when creating the pod. 
+ Type the following incomplete command and press tab twice to get the possible completions: kubectl get pods --namespace=
+ The default namespace is used when you schedule pods without declaring a specific namespace. The kube-system namespace is where pods essential to the operation of the Kubernetes cluster live.
+ kubectl get pods --namespace=kube-system
+ All of the components of the cluster are running in pods in the kube-system namespace:
+
+calico: The container network used to connect each node to every other node in the cluster. Calico also supports network policy. Calico is one of many possible container networks that can be used by Kubernetes.
+etcd: The primary data store of all cluster state
+kube-apiserver: The REST API server for managing the Kubernetes cluster
+kube-controller-manager: Manager of all of the controllers in the cluster that monitor and change the cluster state when necessary
+kube-dns: Provides DNS services to nodes in the cluster
+kube-proxy: Network proxy that runs on each node
+kubernetes-dashboard: Monitoring and graphical interface for managing the cluster. You will use this in a later Lab Step.
+Stateful applications are applications that have a memory of what happened in the past. Databases are an example of stateful applications. Kubernetes provides support for stateful applications through StatefulSets and related primitives.
+Headless Service: A headless service is a Kubernetes service resource that won't load balance behind a single service IP. Instead, a headless service returns list of DNS records that point directly to the pods that back the service. A headless service is defined by declaring the clusterIP property in a service spec and setting the value to None. StatefulSets currently require a headless service to identify pods in the cluster network.
+Stateful Sets: Similar to Deployments in Kubernetes, StatefulSets manage the deployment and scaling of pods given a container spec. StatefulSets differ from Deployments in that they each pod in a StatefulSet is not interchangeable. Each pod in a StatefulSet has a persistent identifier that it maintains across any rescheduling. The pods in a StatefulSet are also ordered. This provides a guarantee that one pod can be created before following pods. In this Lab, this is useful for ensuring the master is provisioned first.
+MySQL replication: This Lab uses a single master, asynchronous replication scheme for MySQL. All database writes are handled by the single master. The database replicas asynchronously synchronize with the master. This means the master will not wait for the data to be copied onto the replicas. This can improve the performance of the master at the expense of having replicas that are not always exact copies of the master. Many applications can tolerate slight differences in the data and are able to improve the performance of database read workloads by allowing clients to read from the replicas.
+ConfigMap to allow master MySQL pods to be configured differently than replica pods:
+cat <<EOF > mysql-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+data:
+  master.cnf: |
+   # Apply this config only on the master.
+   [mysqld]
+   log-bin
+  slave.cnf: |
+    # Apply this config only on slaves.
+    [mysqld]
+    super-read-only
+EOF
+Enter the following command to declare the services for the MySQL application:
+cat <<EOF > mysql-services.yaml
+# Headless service for stable DNS entries of StatefulSet members.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+  clusterIP: None
+  selector:
+    app: mysql
+---
+# Client service for connecting to any MySQL instance for reads.
+# For writes, you must instead connect to the master: mysql-0.mysql.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-read
+  labels:
+    app: mysql
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+  selector:
+    app: mysql
+EOF
+Two services are defined:
+
+A headless service (clusterIP: None) for pod DNS resolution. Because the service is named mysql, pods are accessible via pod-name.mysql.
+A service name mysql-read to connect to for database reads. This service uses the default ServiceType of ClusterIP which assigns an internal IP address that load balances request to all the pods labeled with app: mysql.
+Enter the following command to declare a default storage class that will be used to dynamically provision general purpose (gp2) EBS volumes for the Kubernetes PVs:
+cat <<EOF > mysql-storageclass.yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: general
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+EOF
+Enter the following command to declare the MySQL StatefulSet:
+cat <<'EOF' > mysql-statefulset.yaml
+apiVersion: apps/v1beta2
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  serviceName: mysql
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      initContainers:
+      - name: init-mysql
+        image: mysql:5.7
+        command:
+        - bash
+        - "-c"
+        - |
+          set -ex
+          # Generate mysql server-id from pod ordinal index.
+          [[ `hostname` =~ -([0-9]+)$ ]] || exit 1
+          ordinal=${BASH_REMATCH[1]}
+          echo [mysqld] > /mnt/conf.d/server-id.cnf
+          # Add an offset to avoid reserved server-id=0 value.
+          echo server-id=$((100 + $ordinal)) >> /mnt/conf.d/server-id.cnf
+          # Copy appropriate conf.d files from config-map to emptyDir.
+          if [[ $ordinal -eq 0 ]]; then
+            cp /mnt/config-map/master.cnf /mnt/conf.d/
+          else
+            cp /mnt/config-map/slave.cnf /mnt/conf.d/
+          fi
+        volumeMounts:
+        - name: conf
+          mountPath: /mnt/conf.d
+        - name: config-map
+          mountPath: /mnt/config-map
+      - name: clone-mysql
+        image: gcr.io/google-samples/xtrabackup:1.0
+        command:
+        - bash
+        - "-c"
+        - |
+          set -ex
+          # Skip the clone if data already exists.
+          [[ -d /var/lib/mysql/mysql ]] && exit 0
+          # Skip the clone on master (ordinal index 0).
+          [[ `hostname` =~ -([0-9]+)$ ]] || exit 1
+          ordinal=${BASH_REMATCH[1]}
+          [[ $ordinal -eq 0 ]] && exit 0
+          # Clone data from previous peer.
+          ncat --recv-only mysql-$(($ordinal-1)).mysql 3307 | xbstream -x -C /var/lib/mysql
+          # Prepare the backup.
+          xtrabackup --prepare --target-dir=/var/lib/mysql
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          subPath: mysql
+        - name: conf
+          mountPath: /etc/mysql/conf.d
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "1"
+        ports:
+        - name: mysql
+          containerPort: 3306
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          subPath: mysql
+        - name: conf
+          mountPath: /etc/mysql/conf.d
+        resources:
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        livenessProbe:
+          exec:
+            command: ["mysqladmin", "ping"]
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            # Check we can execute queries over TCP (skip-networking is off).
+            command: ["mysql", "-h", "127.0.0.1", "-e", "SELECT 1"]
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+      - name: xtrabackup
+        image: gcr.io/google-samples/xtrabackup:1.0
+        ports:
+        - name: xtrabackup
+          containerPort: 3307
+        command:
+        - bash
+        - "-c"
+        - |
+          set -ex
+          cd /var/lib/mysql
+
+          # Determine binlog position of cloned data, if any.
+          if [[ -f xtrabackup_slave_info ]]; then
+            # XtraBackup already generated a partial "CHANGE MASTER TO" query
+            # because we're cloning from an existing slave.
+            mv xtrabackup_slave_info change_master_to.sql.in
+            # Ignore xtrabackup_binlog_info in this case (it's useless).
+            rm -f xtrabackup_binlog_info
+          elif [[ -f xtrabackup_binlog_info ]]; then
+            # We're cloning directly from master. Parse binlog position.
+            [[ `cat xtrabackup_binlog_info` =~ ^(.*?)[[:space:]]+(.*?)$ ]] || exit 1
+            rm xtrabackup_binlog_info
+            echo "CHANGE MASTER TO MASTER_LOG_FILE='${BASH_REMATCH[1]}',\
+                  MASTER_LOG_POS=${BASH_REMATCH[2]}" > change_master_to.sql.in
+          fi
+
+          # Check if we need to complete a clone by starting replication.
+          if [[ -f change_master_to.sql.in ]]; then
+            echo "Waiting for mysqld to be ready (accepting connections)"
+            until mysql -h 127.0.0.1 -e "SELECT 1"; do sleep 1; done
+
+            echo "Initializing replication from clone position"
+            # In case of container restart, attempt this at-most-once.
+            mv change_master_to.sql.in change_master_to.sql.orig
+            mysql -h 127.0.0.1 <<EOF
+          $(<change_master_to.sql.orig),
+            MASTER_HOST='mysql-0.mysql',
+            MASTER_USER='root',
+            MASTER_PASSWORD='',
+            MASTER_CONNECT_RETRY=10;
+          START SLAVE;
+          EOF
+          fi
+
+          # Start a server to send backups when requested by peers.
+          exec ncat --listen --keep-open --send-only --max-conns=1 3307 -c \
+            "xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root"
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          subPath: mysql
+        - name: conf
+          mountPath: /etc/mysql/conf.d
+        resources:
+          requests:
+            cpu: 100m
+            memory: 50Mi
+      volumes:
+      - name: conf
+        emptyDir: {}
+      - name: config-map
+        configMap:
+          name: mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: general
+EOF
+There is a lot going on in the StatefulSet. Don't focus too much on the bash scripts that are performing MySQL specific tasks. Some highlights to focus on, following the order they appear in the file are:
+
+init-containers: Run to completion before any containers in the Pod spec
+init-mysql: Assigns a unique MySQL server ID starting from 100 for the first pod and incrementing by one, as well as copying the appropriate configuration file from the config-map. Note the config-map is mounted via the VolumeMounts section. The ID and appropriate configuration file are persisted on the conf volume.
+clone-mysql: For pods after the master, clone the database files from the preceding pod. The xtrabackup tool performs the file cloning and persists the data on the data volume.
+spec.containers: Two containers in the pod
+mysql: Runs the MySQL daemon and mounts the configuration in the conf volume and the data in the data volume
+xtrabackup: A sidecar container that provides additional functionality to the mysql container. It starts a server to allow data cloning and begins replication on slaves using the cloned data files.
+spec.volumes: conf and config-map volumes are stored on the node's local disk. They are easily re-generated if a failure occurs and don't require PVs.
+volumeClaimTemplates: A template for each pod to create a PVC with. ReadWriteOnce accessMode allows the PV to be mounted by only one node at a time in read/write mode. The storageClassName references the AWS EBS gp2 storage class named general that you created earlier. 
+kubectl get statefulset
+In this Lab Step, you created several Kubernetes cluster resources to deploy the MySQL database as an example stateful application:
+
+A ConfigMap for decoupling master and slave configuration from the containers
+Two Services: one headless service to manage network identity of pods in the StatefulSet, and one to load balance read access to the MySQL replicas
+A StorageClass to provision EBS PVs dynamically
+A StatefulSet that declared two init-containers, two containers, and one PVC template
+You observed the ordered sequence of pods being initialized and the PVs created in AWS to faciliate the StatefulSet.
+Run a temporary container to use mysql to connect to the master at mysql-0.mysql and runs a few SQL commands:
+kubectl run mysql-client --image=mysql:5.7 -i -t --rm --restart=Never --\
+  mysql -h mysql-0.mysql -e "CREATE DATABASE mydb; CREATE TABLE mydb.notes (note VARCHAR(250)); INSERT INTO mydb.notes VALUES ('k8s Cloud Academy Lab');"
+  Run a query using the mysql-read endpoint to select all of the notes in the table:
+  kubectl run mysql-client --image=mysql:5.7 -i -t --rm --restart=Never --\
+  mysql -h mysql-read -e "SELECT * FROM mydb.notes"
+  Run an SQL command that outputs the MySQL server's ID to confirm that the requests are distributed to different pods:
+  kubectl run mysql-client-loop --image=mysql:5.7 -i -t --rm --restart=Never --\
+  bash -ic "while sleep 1; do mysql -h mysql-read -e 'SELECT @@server_id'; done"
+  Enter the following command to simulate taking the node running the mysql-2 pod out of service for maintenance:
+  kubectl drain <NODE_NAME> --force --delete-local-data --ignore-daemonsets
+  The drain command prevents new pods from being scheduled on the node and then evicts existing pods scheduled to it.
+  Watch the mysql-2 pod get rescheduled to a different node: kubectl get pod mysql-2 -o wide --watch
+  Uncordon the node you drained so that pods can be scheduled on it again:kubectl uncordon <NODE_NAME>
+  The apply command can update existing resources. It will create resources if they don't already exist. Because you created the services using the create command instead of apply you will see a warning.
+  cat << EOF > dashboard-admin.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: kubernetes-dashboard
+  labels:
+    k8s-app: kubernetes-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: kubernetes-dashboard
+  namespace: kube-system
+EOF
+https://medium.com/bb-tutorials-and-thoughts/practice-enough-with-these-questions-for-the-ckad-exam-2f42d1228552
+https://kubernetes.io/docs/reference/kubectl/cheatsheet/
+https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/
+https://kubernetes.io/docs/concepts/
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#-strong-getting-started-strong-
+https://devblogs.microsoft.com/premier-developer/certified-kubernetes-application-developer-ckad-exam-tips/
+kubectl explain <object_name>.spec – will show you what fields you can use when defining Kubernetes objects using YAML. It’s very convenient to know if a readiness probe should be declared at the pod level or at the container level. You can also add –recursive to display all lower levels fields rather than just the direct children. I tried to avoid the recursive option since it is really verbose.
