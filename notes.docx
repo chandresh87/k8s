@@ -117,7 +117,7 @@ restartPolicy: Never
 EOF
 •	kubectl create -f pod-fail.yaml
 •	watch kubectl describe jobs pod-fail
-Setting a Job's ttlSecondsAfterFinished can free you from manually cleaning up the Pods.
+•	Setting a Job's ttlSecondsAfterFinished can free you from manually cleaning up the Pods.
 cat << 'EOF' > cronjob-example.yaml
 apiVersion: batch/v1beta1
 kind: CronJob
@@ -135,15 +135,16 @@ spec:
             command: ['date']
           restartPolicy: Never
 EOF
-kubectl create -f cronjob-example.yaml
-Observe the Events of the CronJob to confirm that it is creating Jobs every minute: kubectl describe cronjob cronjob-example
-kubectl explain pod.spec.containers.readinessProbe
-Read through the DESCRIPTION and FIELDS. There are three types of actions a probe can take to assess the readiness of a Pod's container:
-
-exec: Issue a command in the container. If the exit code is zero the container is a success, otherwise it is a failed probe.
-httpGet: Send and HTTP GET request to the container at a specified path and port. If the HTTP response status code is a 2xx or 3xx then the container is a success, otherwise it is a failure.
-tcpSocket: Attempt to open a socket to the container on a specified port. If the connection cannot be established, the probe fails.
-The number of consecurtive successes is configured via the successThreshold field, and the number of consecutive failures required to tranisition from success to failure is failureThreshold. The probe runs every periodSeconds and each probe will wait up to timeoutSeconds to complete.
+•	kubectl create -f cronjob-example.yaml
+•	Observe the Events of the CronJob to confirm that it is creating Jobs every minute: kubectl describe cronjob cronjob-example
+•	kubectl explain pod.spec.containers.readinessProbe
+•	Read through the DESCRIPTION and FIELDS. There are three types of actions a probe can take to assess the readiness of a Pod's container:
+o	exec: Issue a command in the container. If the exit code is zero the container is a success, otherwise it is a failed probe.
+o	httpGet: Send and HTTP GET request to the container at a specified path and port. If the HTTP response status code is a 2xx or 3xx then the container is a success, otherwise it is a failure.
+o	tcpSocket: Attempt to open a socket to the container on a specified port. If the connection cannot be established, the probe fails.
+o	The number of consecurtive successes is configured via the successThreshold field,
+o	 The number of consecutive failures required to tranisition from success to failure is failureThreshold. 
+o	The probe runs every periodSeconds and each probe will wait up to timeoutSeconds to complete.
 cat << 'EOF' > pod-readiness.yaml
 apiVersion: v1
 kind: Pod
@@ -167,7 +168,9 @@ spec:
       initialDelaySeconds: 3
       periodSeconds: 3
 EOF
-kubectl describe pod readiness-http : In the Events you should see some Warning entries related to the failed probe.You can see when the succeeds by looking at the Conditions section:The Ready and ContainerReady Status will both be True once the probe succeeds. They will be False until then. 
+o	kubectl describe pod readiness-http : In the Events you should see some Warning entries related to the failed probe.
+o	You can see when the succeeds by looking at the Conditions section:The Ready and ContainerReady Status will both be True once the probe succeeds. They will be False until then. 
+
 cat << 'EOF' > pod-liveness.yaml
 apiVersion: v1
 kind: Pod
@@ -217,11 +220,11 @@ spec:
     command: ["/bin/sh", "-c"]
     args: ["while true; do sleep 5; nc localhost 8888; done"]
 EOF
-Retrieve the logs (standard output messages) from the server container: kubectl logs pod-logs server
-Display the most recent log (--tail=1) including the timestamp and stream (-f for follow) the logs : kubectl logs -f --tail=1 --timestamps pod-logs client
-Retrieve the last 10 lines from the conf/httpd.conf file: kubectl exec webserver-logs -- tail -10 conf/httpd.conf
-Copy the conf/httpd.conf from the container to the bastion host: kubectl cp webserver-logs:conf/httpd.conf local-copy-of-httpd.conf
-The cp command takes a source file spec (webserver-logs:conf/httpd.conf) and a destination file spec (local-copy-of-httpd.conf). You can also copy from the local file system to a container using cp
+o	Retrieve the logs (standard output messages) from the server container: kubectl logs pod-logs server
+o	Display the most recent log (--tail=1) including the timestamp and stream (-f for follow) the logs : kubectl logs -f --tail=1 --timestamps pod-logs client
+o	Retrieve the last 10 lines from the conf/httpd.conf file: kubectl exec webserver-logs -- tail -10 conf/httpd.conf
+o	Copy the conf/httpd.conf from the container to the bastion host: kubectl cp webserver-logs:conf/httpd.conf local-copy-of-httpd.conf
+o	The cp command takes a source file spec (webserver-logs:conf/httpd.conf) and a destination file spec (local-copy-of-httpd.conf). You can also copy from the local file system to a container using cp
 Create a ConfigMap that stores the fluentd configuration file:
 cat << EOF > fluentd-sidecar-config.yaml
 apiVersion: v1
@@ -265,7 +268,7 @@ data:
     </match>
 EOF
 Create a multi-container Pod using a fluentd logging agent sidecar:
-at << 'EOF' > pod-counter.yaml
+cat << 'EOF' > pod-counter.yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -314,8 +317,8 @@ spec:
       name: fluentd-config
 EOF
 kubectl create -f pod-counter.yaml
-The count container writes the date and a counter variable ($i) in two different log formats to two different log files in the /var/log directory every second. The /var/log directory is mounted as a Volume in both the primary count container and the count-agent sidecar so both containers can access the logs. The sidecar also mounts the ConfigMap to access the fluentd configuration file. By using a ConfigMap, the same sidecar container can be used for any configuration compared to storing the configuration in the image and having to manage separate container images for each configuration.
-kubectl get pods --all-namespaces
+o	The count container writes the date and a counter variable ($i) in two different log formats to two different log files in the /var/log directory every second. The /var/log directory is mounted as a Volume in both the primary count container and the count-agent sidecar so both containers can access the logs. The sidecar also mounts the ConfigMap to access the fluentd configuration file. By using a ConfigMap, the same sidecar container can be used for any configuration compared to storing the configuration in the image and having to manage separate container images for each configuration.
+o	kubectl get pods --all-namespaces
 List all the events in the logs namespace- kubectl get events -n logs
 kubectl top
 Download the Metrics Server manifest files and create the associated Resources:
